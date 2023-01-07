@@ -12,7 +12,7 @@ from discord.utils import get
 from random import choice
 
 # prep
-token = "insert your bot token here"
+token = "MTA0OTk3NzM3MTE2OTY3MzIyNg.GeTSiX.qkXu3wxo-0JkRmEQ6lNhTvCQ7KrqEp35V2qZRE"
 intents = discord.Intents.all()
 Bot = commands.Bot(command_prefix='colu ', intents=intents)
 
@@ -84,8 +84,6 @@ async def join(ctx):
     await channel.connect()
 
 
-
-
 @Bot.command(pass_context=True)
 async def p(ctx, *args):
     global voice_clients
@@ -109,7 +107,7 @@ async def p(ctx, *args):
     
 
 @Bot.command(name='play', help='This command plays music')
-async def play(ctx):
+async def play(ctx, *args):
     global queue
     if not ctx.message.author.voice:
         await ctx.send("You are not connected to a voice channel")
@@ -121,7 +119,7 @@ async def play(ctx):
     server = ctx.message.guild
     voice_channel = server.voice_client
     async with ctx.typing():
-        player = await YTDLSource.from_url(queue[0], loop=Bot.loop)
+        player = await YTDLSource.from_url(args[0], loop=Bot.loop)
         songlist.append(player)
         voice_channel.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
         if loop:
