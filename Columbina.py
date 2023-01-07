@@ -12,7 +12,7 @@ from discord.utils import get
 from random import choice
 
 # prep
-token = "MTA0OTk3NzM3MTE2OTY3MzIyNg.GeTSiX.qkXu3wxo-0JkRmEQ6lNhTvCQ7KrqEp35V2qZRE"
+token = "put your bots token here"
 intents = discord.Intents.all()
 Bot = commands.Bot(command_prefix='colu ', intents=intents)
 
