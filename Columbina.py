@@ -12,7 +12,7 @@ from discord.utils import get
 from random import choice
 
 # prep
-token = "put your bots token here"
+token = "put your bot token here"
 intents = discord.Intents.all()
 Bot = commands.Bot(command_prefix='colu ', intents=intents)
 
@@ -277,6 +277,14 @@ async def echoes(ctx, *args):
         await ctx.channel.send(f"{args}")
 
 
+@Bot.command(pass_context=True, help="remind user within x seconds")
+async def remind(ctx, *args):
+    if ctx.author != Bot.user:
+        await ctx.channel.send(f"i will mention you, {ctx.author.mention}, within {args[0]} hour(s) {args[1]} minute(s) {args[2]} second(s)")
+        await asyncio.sleep(int(args[0]*3600 + args[1]*60 + args[2]))
+        await ctx.channel.send(f"{ctx.author.mention} onii-chan bangun, katanya minta di ingetin.")
+        await asyncio.sleep(3)
+        await ctx.channel.send(f"{ctx.author.mention} mooo, onii-chan teba.")
 
 @Bot.event
 async def on_message_edit(before, after):
@@ -288,10 +296,7 @@ async def on_message_edit(before, after):
                     f"Before : {before.content} \n"
                     f"After : {after.content} \n"
                 )
-async def on_message(msg):
-    if msg.author != Bot.user:
-        if msg.content.lower().startswith("valid"):
-            await msg.channel.send(f"valdi")
+
 
 
 
