@@ -10,12 +10,13 @@ from discord.voice_client import VoiceClient
 from discord.utils import get
 from random import choice
 
-prefixeslist = ['colu ']
+
+preflist = pickle.load(open("preflist.dat", "rb"))
 
 # prep
-token = "put your bot token here."
+token = "insert bot token here"
 intents = discord.Intents.all()
-Bot = commands.Bot(command_prefix=prefixeslist, intents=intents)
+Bot = commands.Bot(command_prefix=preflist, intents=intents)
 
 
 
@@ -285,7 +286,7 @@ async def echoes(ctx, *args):
             await ctx.channel.send(f"{i}")
 
 
-@Bot.command(pass_context=True, help="register tag and pop the tag registered")
+@Bot.command(pass_context=True, help="register tag and pop the tag registered. tag add, remove, list.")
 async def tag(ctx, *args):
     if ctx.author != Bot.user:
         if args[0] == "add":
@@ -302,7 +303,7 @@ async def tag(ctx, *args):
                 except:
                     msg = ""
                     for i in range(2, len(args)):
-                        msg += args[i]
+                        msg += args[i]; msg += " "
                     attlist.append(msg)
                     pickle.dump(attlist, open("attlist.dat", "wb"))
                 await ctx.channel.send(f"tag **{args[1]}** successfully registered.")
@@ -330,17 +331,27 @@ async def tag(ctx, *args):
             if rem:
                 await ctx.channel.send(f"tag **{args[1]}** not found.")
         else:
+            notfound = True
             for i in range(len(taglist)):
                 if args[0] == taglist[i]:
                     await ctx.channel.send(f"{attlist[i]}")
+                    notfound = False
                     break
+            if notfound:
+                await ctx.channel.send(f"tag **{args[0]}** has not been registered yet.")
 
-@Bot.command(pass_context=True, help="register tag and pop the tag registered")
+@Bot.command(pass_context=True, help="manage prefixes.")
 async def prefixes(ctx, *args):
     if ctx.author != Bot.user:
         if args[0] == "add":
-            prefixeslist.append(args[1])
+            preflist.append(args[1])
+            pickle.dump(preflist, open("preflist.dat", "wb"))
             await ctx.channel.send(f"prefixes {args[1]} has been added.")
+        elif args[0] == "list":
+            msg = ""
+            for i in preflist:
+                msg += "'" + i + "' "
+            await ctx.channel.send(f"```{msg}```")
             
 
 @Bot.command(pass_context=True, help="remind user within x seconds")
