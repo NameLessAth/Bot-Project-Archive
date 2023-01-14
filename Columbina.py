@@ -1,20 +1,23 @@
 import discord
-from discord.ext import commands, tasks
-from discord.voice_client import VoiceClient
-import requests
-import json
+import pickle
 import os
 import asyncio
 import youtube_dl
 import random as rd 
 import math
+from discord.ext import commands, tasks
+from discord.voice_client import VoiceClient
 from discord.utils import get
 from random import choice
 
+prefixeslist = ['colu ']
+
 # prep
-token = "put your bot token here"
+token = "put your bot token here."
 intents = discord.Intents.all()
-Bot = commands.Bot(command_prefix='colu ', intents=intents)
+Bot = commands.Bot(command_prefix=prefixeslist, intents=intents)
+
+
 
 #ffmpeg prep
 youtube_dl.utils.bug_reports_message = lambda: ''
@@ -40,7 +43,7 @@ ffmpeg_options = {
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
 class YTDLSource(discord.PCMVolumeTransformer):
-    def __init__(self, source, *, data, volume=0.5):
+    def __init__(self, source, *, data, volume=0.05):
         super().__init__(source, volume)
 
         self.data = data
@@ -66,6 +69,10 @@ songlist = []
 detect = False
 loop = False
 queue = []
+taglist = pickle.load(open("taglist.dat", "rb"))
+attlist = pickle.load(open("attlist.dat", "rb"))
+
+
 
 
 # event and command lists
@@ -274,17 +281,77 @@ async def slot(ctx):
 @Bot.command(pass_context=True, help="echoes whatever you said")
 async def echoes(ctx, *args):
     if ctx.author != Bot.user:
-        await ctx.channel.send(f"{args}")
+        for i in args:
+            await ctx.channel.send(f"{i}")
 
+
+@Bot.command(pass_context=True, help="register tag and pop the tag registered")
+async def tag(ctx, *args):
+    if ctx.author != Bot.user:
+        if args[0] == "add":
+            sama = False
+            for i in taglist:
+                if args[1] == i:
+                    sama = True
+            if sama == False:
+                taglist.append(args[1])
+                pickle.dump(taglist, open("taglist.dat", "wb"))
+                try:
+                    attlist.append(ctx.message.attachments[0].url)
+                    pickle.dump(attlist, open("attlist.dat", "wb"))
+                except:
+                    msg = ""
+                    for i in range(2, len(args)):
+                        msg += args[i]
+                    attlist.append(msg)
+                    pickle.dump(attlist, open("attlist.dat", "wb"))
+                await ctx.channel.send(f"tag **{args[1]}** successfully registered.")
+            else: 
+                await ctx.channel.send(f"tag **{args[1]}** has registered before.")
+        elif args[0] == "list":
+            msg = ""
+            for i in taglist:
+                msg += i; msg += ", "
+            await ctx.channel.send(
+                f"list that has been registered: "
+                f"```{msg}```"
+            )
+        elif args[0] == "remove":
+            rem = True
+            for i in range(len(taglist)):
+                if args[1] == taglist[i]:
+                    taglist.remove(taglist[i])
+                    pickle.dump(taglist, open("taglist.dat", "wb"))
+                    attlist.remove(attlist[i])
+                    pickle.dump(attlist, open("attlist.dat", "wb"))
+                    await ctx.channel.send(f"tag **{args[1]}** successfully removed.")
+                    rem = False
+                    break
+            if rem:
+                await ctx.channel.send(f"tag **{args[1]}** not found.")
+        else:
+            for i in range(len(taglist)):
+                if args[0] == taglist[i]:
+                    await ctx.channel.send(f"{attlist[i]}")
+                    break
+
+@Bot.command(pass_context=True, help="register tag and pop the tag registered")
+async def prefixes(ctx, *args):
+    if ctx.author != Bot.user:
+        if args[0] == "add":
+            prefixeslist.append(args[1])
+            await ctx.channel.send(f"prefixes {args[1]} has been added.")
+            
 
 @Bot.command(pass_context=True, help="remind user within x seconds")
 async def remind(ctx, *args):
     if ctx.author != Bot.user:
         await ctx.channel.send(f"i will mention you, {ctx.author.mention}, within {args[0]} hour(s) {args[1]} minute(s) {args[2]} second(s)")
-        await asyncio.sleep(int(args[0]*3600 + args[1]*60 + args[2]))
+        await asyncio.sleep(int(args[0])*3600 + int(args[1])*60 + int(args[2]))
         await ctx.channel.send(f"{ctx.author.mention} onii-chan bangun, katanya minta di ingetin.")
         await asyncio.sleep(3)
         await ctx.channel.send(f"{ctx.author.mention} mooo, onii-chan teba.")
+
 
 @Bot.event
 async def on_message_edit(before, after):
@@ -296,8 +363,6 @@ async def on_message_edit(before, after):
                     f"Before : {before.content} \n"
                     f"After : {after.content} \n"
                 )
-
-
 
 
 Bot.run(token)
