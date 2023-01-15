@@ -14,7 +14,7 @@ from random import choice
 preflist = pickle.load(open("preflist.dat", "rb"))
 
 # prep
-token = "insert bot token here"
+token = "bot token"
 intents = discord.Intents.all()
 Bot = commands.Bot(command_prefix=preflist, intents=intents)
 
@@ -340,18 +340,28 @@ async def tag(ctx, *args):
             if notfound:
                 await ctx.channel.send(f"tag **{args[0]}** has not been registered yet.")
 
-@Bot.command(pass_context=True, help="manage prefixes.")
+@Bot.command(pass_context=True, help="manage prefixes. prefixes add, list, remove.")
 async def prefixes(ctx, *args):
     if ctx.author != Bot.user:
         if args[0] == "add":
             preflist.append(args[1])
             pickle.dump(preflist, open("preflist.dat", "wb"))
-            await ctx.channel.send(f"prefixes {args[1]} has been added.")
+            await ctx.channel.send(f"prefixes '{args[1]}' has been added.")
         elif args[0] == "list":
             msg = ""
             for i in preflist:
                 msg += "'" + i + "' "
             await ctx.channel.send(f"```{msg}```")
+        elif args[0] == "remove":
+            for i in range(len(preflist)):
+                rem = True
+                if args[1] == preflist[i]:
+                    preflist.remove(preflist[i])
+                    pickle.dump(preflist, open("preflist.dat", "wb"))
+                    await ctx.channel.send(f"prefixes '{args[1]}' successfully removed.")
+                    rem = False
+            if rem:
+                await ctx.channel.send(f"prefixes '{args[1]}' has not been registered yet.")
             
 
 @Bot.command(pass_context=True, help="remind user within x seconds")
@@ -363,6 +373,9 @@ async def remind(ctx, *args):
         await asyncio.sleep(3)
         await ctx.channel.send(f"{ctx.author.mention} mooo, onii-chan teba.")
 
+@Bot.command(pass_context=True)
+async def debug(ctx):
+    await ctx.channel.send(f"{taglist}")
 
 @Bot.event
 async def on_message_edit(before, after):
@@ -374,6 +387,25 @@ async def on_message_edit(before, after):
                     f"Before : {before.content} \n"
                     f"After : {after.content} \n"
                 )
+
+@Bot.event
+async def on_message(ctx):
+    if ctx.author != Bot.user:
+        tagused = False
+        for i in ctx.content.split(' '):
+            if i[0] == '#' and i[len(i)-1] == '#':
+                tagused = True; msg = i.replace('#', ''); break
+        if tagused:
+            notfound = True
+            for i in range(len(taglist)):
+                if msg == taglist[i]:
+                    await ctx.channel.send(f"{attlist[i]}")
+                    notfound = False
+                    break
+            if notfound:
+                await ctx.channel.send(f"tag **{msg}** has not been registered yet.")
+        else:
+            await Bot.process_commands(ctx)
 
 
 Bot.run(token)
