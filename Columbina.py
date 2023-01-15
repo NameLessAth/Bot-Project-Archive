@@ -340,6 +340,7 @@ async def tag(ctx, *args):
             if notfound:
                 await ctx.channel.send(f"tag **{args[0]}** has not been registered yet.")
 
+                
 @Bot.command(pass_context=True, help="manage prefixes. prefixes add, list, remove.")
 async def prefixes(ctx, *args):
     if ctx.author != Bot.user:
@@ -373,10 +374,22 @@ async def remind(ctx, *args):
         await asyncio.sleep(3)
         await ctx.channel.send(f"{ctx.author.mention} mooo, onii-chan teba.")
 
-@Bot.command(pass_context=True)
-async def debug(ctx):
-    await ctx.channel.send(f"{taglist}")
+        
+@Bot.command(pass_context=True, help="sending user a mp3 version of provided youtube link.")
+async def audio(ctx, *args):
+    if ctx.author != Bot.user:
+        title = YouTube(args[0]).title
+        await ctx.reply(f"trying to download the **{title}** audio...")
+        async with ctx.typing():
+            youtubeObject = YouTube(args[0])
+            youtubeObject = youtubeObject.streams.get_by_itag(18)
+            youtubeObject.download()
+            subprocess.run(f'ffmpeg -i "path\{title}".mp4 "path\{title}".mp3', shell=True)
+            await ctx.reply(file=discord.File(f"path\{title}.mp3"))
+            os.remove(f"path\{title}.mp4")
+            os.remove(f"path\{title}.mp3")
 
+            
 @Bot.event
 async def on_message_edit(before, after):
     if detect:
