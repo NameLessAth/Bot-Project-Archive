@@ -1,5 +1,6 @@
 import discord
 import pickle
+import subprocess
 import os
 import asyncio
 import youtube_dl
@@ -9,12 +10,14 @@ from discord.ext import commands, tasks
 from discord.voice_client import VoiceClient
 from discord.utils import get
 from random import choice
+from pytube import YouTube
+
 
 
 preflist = pickle.load(open("preflist.dat", "rb"))
 
 # prep
-token = "bot token"
+token = "put your bot token here"
 intents = discord.Intents.all()
 Bot = commands.Bot(command_prefix=preflist, intents=intents)
 
@@ -44,7 +47,7 @@ ffmpeg_options = {
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
 class YTDLSource(discord.PCMVolumeTransformer):
-    def __init__(self, source, *, data, volume=0.05):
+    def __init__(self, source, *, data, volume=0.5):
         super().__init__(source, volume)
 
         self.data = data
@@ -72,8 +75,6 @@ loop = False
 queue = []
 taglist = pickle.load(open("taglist.dat", "rb"))
 attlist = pickle.load(open("attlist.dat", "rb"))
-
-
 
 
 # event and command lists
@@ -133,7 +134,7 @@ async def play(ctx, *args):
         if loop:
             queue.append(queue[0])
         del(queue[0])
-    await ctx.send('**Now playing:** {}'.format(player.title))
+    await ctx.send(f'**Now playing:** {player.title}')
     
 
 @Bot.command(pass_context=True, help='This command pauses the song')
@@ -196,6 +197,8 @@ async def enable_feature(ctx):
         global detect
         detect = True
         await ctx.channel.send(f"Detecting feature has been enabled.")    
+
+
 @Bot.command(pass_context=True, help="command that disable the detecting edited message")
 async def disable_feature(ctx):
     if ctx.author != Bot.user:
@@ -308,13 +311,13 @@ async def tag(ctx, *args):
                     pickle.dump(attlist, open("attlist.dat", "wb"))
                 await ctx.channel.send(f"tag **{args[1]}** successfully registered.")
             else: 
-                await ctx.channel.send(f"tag **{args[1]}** has registered before.")
+                await ctx.channel.send(f"tag **{args[1]}** has been registered before.")
         elif args[0] == "list":
             msg = ""
             for i in taglist:
                 msg += i; msg += ", "
             await ctx.channel.send(
-                f"list that has been registered: "
+                f"list has been registered: "
                 f"```{msg}```"
             )
         elif args[0] == "remove":
@@ -340,7 +343,7 @@ async def tag(ctx, *args):
             if notfound:
                 await ctx.channel.send(f"tag **{args[0]}** has not been registered yet.")
 
-                
+
 @Bot.command(pass_context=True, help="manage prefixes. prefixes add, list, remove.")
 async def prefixes(ctx, *args):
     if ctx.author != Bot.user:
@@ -374,22 +377,29 @@ async def remind(ctx, *args):
         await asyncio.sleep(3)
         await ctx.channel.send(f"{ctx.author.mention} mooo, onii-chan teba.")
 
-        
+
 @Bot.command(pass_context=True, help="sending user a mp3 version of provided youtube link.")
 async def audio(ctx, *args):
     if ctx.author != Bot.user:
         title = YouTube(args[0]).title
         await ctx.reply(f"trying to download the **{title}** audio...")
-        async with ctx.typing():
-            youtubeObject = YouTube(args[0])
-            youtubeObject = youtubeObject.streams.get_by_itag(18)
-            youtubeObject.download()
-            subprocess.run(f'ffmpeg -i "path\{title}".mp4 "path\{title}".mp3', shell=True)
-            await ctx.reply(file=discord.File(f"path\{title}.mp3"))
-            os.remove(f"path\{title}.mp4")
-            os.remove(f"path\{title}.mp3")
+        title = title.replace('\\',"").replace('/',"").replace(':',"").replace('*',"").replace('?',"").replace('"',"").replace('<',"").replace('>',"").replace('|',"")
+        youtubeObject = YouTube(args[0])
+        youtubeObject = youtubeObject.streams.get_by_itag(18)
+        youtubeObject.download()
+        subprocess.run(f'ffmpeg -i "{title}".mp4 "{title}".mp3', shell=True)
+        await ctx.reply(file=discord.File(f"{title}.mp3"))
+        os.remove(f"{title}.mp4")
+        os.remove(f"{title}.mp3")
 
-            
+
+@Bot.event
+async def on_member_join(member):
+    channel = discord.utils.get(member.guild.channels, name='「💬」general')
+    await channel.send(f'Irashaimasee {member.mention}-san! gohan ni suru? ofuro ni suru? soredomo? wa-ta-shi?')
+    await channel.send(file=discord.File(f"WelcomingPNG.jpg"))
+
+
 @Bot.event
 async def on_message_edit(before, after):
     if detect:
@@ -401,24 +411,28 @@ async def on_message_edit(before, after):
                     f"After : {after.content} \n"
                 )
 
+
 @Bot.event
 async def on_message(ctx):
     if ctx.author != Bot.user:
         tagused = False
         for i in ctx.content.split(' '):
-            if i[0] == '#' and i[len(i)-1] == '#':
-                tagused = True; msg = i.replace('#', ''); break
+            if len(i) > 2:
+                if i[0] == '#' and i[len(i)-1] == '#':
+                    tagused = True
+                    msg = i[1:len(i)-1] 
+                    break
         if tagused:
             notfound = True
             for i in range(len(taglist)):
                 if msg == taglist[i]:
-                    await ctx.channel.send(f"{attlist[i]}")
-                    notfound = False
-                    break
-            if notfound:
+                    await ctx.reply(f"{attlist[i]}"); notfound = False; break
+            if notfound:    
                 await ctx.channel.send(f"tag **{msg}** has not been registered yet.")
         else:
+            if "tiga" in ctx.content:
+                await ctx.reply("wait, **TIGA???**")
             await Bot.process_commands(ctx)
 
 
-Bot.run(token)
+Bot.run(token)  
