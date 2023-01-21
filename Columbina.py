@@ -1,4 +1,6 @@
 import discord
+from discord.ext import commands, tasks
+from discord.voice_client import VoiceClient
 import pickle
 import subprocess
 import os
@@ -6,8 +8,7 @@ import asyncio
 import youtube_dl
 import random as rd 
 import math
-from discord.ext import commands, tasks
-from discord.voice_client import VoiceClient
+import requests
 from discord.utils import get
 from random import choice
 from pytube import YouTube
@@ -17,7 +18,7 @@ from pytube import YouTube
 preflist = pickle.load(open("preflist.dat", "rb"))
 
 # prep
-token = "put your bot token here"
+token = "token"
 intents = discord.Intents.all()
 Bot = commands.Bot(command_prefix=preflist, intents=intents)
 
@@ -47,7 +48,7 @@ ffmpeg_options = {
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
 class YTDLSource(discord.PCMVolumeTransformer):
-    def __init__(self, source, *, data, volume=0.5):
+    def __init__(self, source, *, data, volume=0.05):
         super().__init__(source, volume)
 
         self.data = data
@@ -113,7 +114,7 @@ async def p(ctx, *args):
         player = await YTDLSource.from_url(url, loop=Bot.loop)
         songlist.append(player)
         voice_clients[ctx.guild.id].play(player, after=lambda e: print('Player error: %s' % e) if e else None)
-    
+   
 
 @Bot.command(name='play', help='This command plays music')
 async def play(ctx, *args):
@@ -298,18 +299,26 @@ async def tag(ctx, *args):
                 if args[1] == i:
                     sama = True
             if sama == False:
-                taglist.append(args[1])
-                pickle.dump(taglist, open("taglist.dat", "wb"))
+                successfull = False
                 try:
                     attlist.append(ctx.message.attachments[0].url)
                     pickle.dump(attlist, open("attlist.dat", "wb"))
+                    await ctx.channel.send(f"tag **{args[1]}** successfully registered.")
+                    successfull = True
                 except:
-                    msg = ""
-                    for i in range(2, len(args)):
-                        msg += args[i]; msg += " "
-                    attlist.append(msg)
-                    pickle.dump(attlist, open("attlist.dat", "wb"))
-                await ctx.channel.send(f"tag **{args[1]}** successfully registered.")
+                    if len(args) <= 2:
+                        await ctx.channel.send(f"argument not found.")
+                    else:
+                        msg = ""
+                        for i in range(2, len(args)):
+                            msg += args[i]; msg += " "
+                        attlist.append(msg)
+                        pickle.dump(attlist, open("attlist.dat", "wb"))
+                        await ctx.channel.send(f"tag **{args[1]}** successfully registered.")  
+                        successfull = True
+                if successfull:
+                    taglist.append(args[1])
+                    pickle.dump(taglist, open("taglist.dat", "wb"))
             else: 
                 await ctx.channel.send(f"tag **{args[1]}** has been registered before.")
         elif args[0] == "list":
@@ -426,7 +435,11 @@ async def on_message(ctx):
             notfound = True
             for i in range(len(taglist)):
                 if msg == taglist[i]:
-                    await ctx.reply(f"{attlist[i]}"); notfound = False; break
+                    try:
+                        await ctx.channel.send(file=discord.File(f"{attlist[i]}"))
+                    except:
+                        await ctx.channel.send(f"{attlist[i]}")
+                    notfound = False; break
             if notfound:    
                 await ctx.channel.send(f"tag **{msg}** has not been registered yet.")
         else:
