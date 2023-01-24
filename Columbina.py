@@ -18,7 +18,7 @@ from pytube import YouTube
 preflist = pickle.load(open("preflist.dat", "rb"))
 
 # prep
-token = "token"
+token = "os"
 intents = discord.Intents.all()
 Bot = commands.Bot(command_prefix=preflist, intents=intents)
 
@@ -38,7 +38,7 @@ ytdl_format_options = {
     'quiet': True,
     'no_warnings': True,
     'default_search': 'auto',
-    'source_address': '0.0.0.0' # bind to ipv4 since ipv6 addresses cause issues sometimes
+    'source_address': '0.0.0.0' 
 }
 
 ffmpeg_options = {
@@ -62,14 +62,13 @@ class YTDLSource(discord.PCMVolumeTransformer):
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
 
         if 'entries' in data:
-            # take first item from a playlist
             data = data['entries'][0]
 
         filename = data['url'] if stream else ytdl.prepare_filename(data)
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
 
-# declare variable lists
+# declare variable
 songlist = []
 detect = False
 loop = False
@@ -78,7 +77,7 @@ taglist = pickle.load(open("taglist.dat", "rb"))
 attlist = pickle.load(open("attlist.dat", "rb"))
 
 
-# event and command lists
+# BOT event and commands
 @Bot.event
 async def on_ready():
     print(f"I, {Bot.user}, is ready to serve master")
@@ -435,10 +434,7 @@ async def on_message(ctx):
             notfound = True
             for i in range(len(taglist)):
                 if msg == taglist[i]:
-                    try:
-                        await ctx.channel.send(file=discord.File(f"{attlist[i]}"))
-                    except:
-                        await ctx.channel.send(f"{attlist[i]}")
+                    await ctx.channel.send(f"{attlist[i]}")
                     notfound = False; break
             if notfound:    
                 await ctx.channel.send(f"tag **{msg}** has not been registered yet.")
