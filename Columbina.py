@@ -8,7 +8,6 @@ import asyncio
 import youtube_dl
 import random as rd 
 import math
-import requests
 from discord.utils import get
 from random import choice
 from pytube import YouTube
@@ -18,7 +17,7 @@ from pytube import YouTube
 preflist = pickle.load(open("preflist.dat", "rb"))
 
 # prep
-token = "os"
+token = "token"
 intents = discord.Intents.all()
 Bot = commands.Bot(command_prefix=preflist, intents=intents)
 
@@ -81,6 +80,7 @@ attlist = pickle.load(open("attlist.dat", "rb"))
 @Bot.event
 async def on_ready():
     print(f"I, {Bot.user}, is ready to serve master")
+
 
 
 @Bot.command(name='join', help='This command makes the bot join the voice channel')
@@ -401,11 +401,25 @@ async def audio(ctx, *args):
         os.remove(f"{title}.mp3")
 
 
+@Bot.command(pass_context=True)
+async def ohayo(ctx, *args):
+    if ctx.author != Bot.user:
+        await asyncio.sleep(int(args[0])*3600 + int(args[1])*60 + int(args[2]))
+        channel = Bot.get_channel(1043863420216295455)
+        responsgif = [f"https://tenor.com/view/w-arknights-arknights-dance-gif-25199998", f"https://tenor.com/view/wenomechainsama-nivar-lllll10-gif-25746616", f"https://tenor.com/view/indo-wibu-niko-niko-nii-gif-21581009", f"https://tenor.com/view/wota-jkt48-heavy-rotation-dance-weeb-gif-17745804", f"https://tenor.com/view/welcome-to-otaku-weeb-goopie-gif-19387818", f"https://tenor.com/view/happy-happy-dog-dog-happiest-dog-super-happy-gif-17885812", f"https://tenor.com/view/segs-man-phase2-segs-man-segs-takeshi-%E3%81%B5%E3%81%BF%E3%83%BC%E3%82%93-gif-23702698", f"https://tenor.com/view/kermit-kermitreee-kermit-aaaaa-scream-gif-15959515", f"https://tenor.com/view/captain-price-cod-modern-warfare-price-dancing-gif-21612770"]
+        responschat = [f"Good morning yall, time to survive another day.", f"Ohayou sekai good morning world~!"]
+        responschat2 = [f"Dont forget to have a breakfast!", f"Dont forget to take your daily dose of copium!"]
+        await channel.send(
+            f"{choice(responschat)}\n"
+            f"{choice(responschat2)}\n") 
+        await channel.send(f"{choice(responsgif)}")
+
+
 @Bot.event
 async def on_member_join(member):
     channel = discord.utils.get(member.guild.channels, name='「💬」general')
     await channel.send(f'Irashaimasee {member.mention}-san! gohan ni suru? ofuro ni suru? soredomo? wa-ta-shi?')
-    await channel.send(file=discord.File(f"WelcomingPNG.jpg"))
+    await channel.send(f"https://cdn.discordapp.com/attachments/1043863420216295455/1064740380408565760/WelcomingPNG.jpg")
 
 
 @Bot.event
@@ -439,9 +453,15 @@ async def on_message(ctx):
             if notfound:    
                 await ctx.channel.send(f"tag **{msg}** has not been registered yet.")
         else:
-            if "tiga" in ctx.content:
+            if "tiga" in ctx.content.lower():
                 await ctx.reply("wait, **TIGA???**")
+            elif "beliau" in ctx.content.lower():
+                await ctx.reply(choice([f"https://cdn.discordapp.com/attachments/1063877319724372052/1069245845838516234/0.png", f"https://cdn.discordapp.com/attachments/1063877319724372052/1069245845838516234/0.png", f"https://cdn.discordapp.com/attachments/1063877319724372052/1069245957096616037/FahuWR8UEAE1_sU.png", f"https://cdn.discordapp.com/attachments/1063877319724372052/1069246054513528882/7e02b4790efc8b12a176a216b1e5fa93.png", f"https://cdn.discordapp.com/attachments/1063877319724372052/1069246155604631552/2Q.png", f"https://cdn.discordapp.com/attachments/1063877319724372052/1069246220268216422/FaHppUjacAIWm5-.png"]))
             await Bot.process_commands(ctx)
+
+
+    
+
 
 
 Bot.run(token)  
