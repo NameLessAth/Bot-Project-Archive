@@ -1,6 +1,4 @@
 import discord
-from discord.ext import commands, tasks
-from discord.voice_client import VoiceClient
 import pickle
 import subprocess
 import os
@@ -8,7 +6,13 @@ import asyncio
 import youtube_dl
 import random as rd 
 import math
+import datetime
+import aiohttp
+from discord.ext import commands, tasks
+from discord.voice_client import VoiceClient
+from kitsune import Kitsune, Popularity, Tag, Artist, Character, Parody, Group 
 from discord.utils import get
+from discord import app_commands
 from random import choice
 from pytube import YouTube
 
@@ -77,12 +81,59 @@ attlist = pickle.load(open("attlist.dat", "rb"))
 
 
 # BOT event and commands
+
+
 @Bot.event
-async def on_ready():
+async def on_ready():   
     print(f"I, {Bot.user}, is ready to serve master")
+    try:
+        synced = await Bot.tree.sync()
+        print(f"synced {len(synced)} slash command!")
+    except Exception as e:
+        print(e)
+
+    
+# Tree Command Lists
+@Bot.tree.command(name="hello", description="greeting the user with latency ")
+async def test(interaction: discord.Interaction):
+    await interaction.response.send_message(f"> Hey! {interaction.user.mention} \n> btw Columbina responded with latency around {round(Bot.latency * 1000)} ms")
 
 
+@Bot.tree.command(name="say", description="I will say anything you want me to say!")
+@app_commands.describe(thing_to_say = "Sentence that i will say")
+async def say(interaction: discord.Interaction, thing_to_say: str):
+    await interaction.response.send_message(f"{thing_to_say}")
 
+
+@Bot.tree.command(name="audio", description="Downloading audio from the given youtube link!")
+@app_commands.describe(youtube_link_to_download = "Youtube link that i will download the audio")
+async def audio(interaction: discord.Interaction, youtube_link_to_download: str):
+    await interaction.response.defer(thinking=False)
+    title = YouTube(youtube_link_to_download).title
+    title = title.replace('\\',"").replace('/',"").replace(':',"").replace('*',"").replace('?',"").replace('"',"").replace('<',"").replace('>',"").replace('|',"")
+    youtubeObject = YouTube(youtube_link_to_download)
+    youtubeObject = youtubeObject.streams.get_by_itag(18)
+    youtubeObject.download()
+    subprocess.run(f'ffmpeg -i "{title}".mp4 "{title}".mp3', shell=True)
+    await interaction.followup.send("Sorry for waiting! here is the file!",file=discord.File(f"{title}.mp3"))
+    os.remove(f"{title}.mp4")
+    os.remove(f"{title}.mp3")
+
+
+@Bot.tree.command(name="video", description="Downloading video from the given youtube link!")
+@app_commands.describe(youtube_link_to_download = "Youtube video link that i will download")
+async def video(interaction: discord.Interaction, youtube_link_to_download: str):
+    await interaction.response.defer(ephemeral=True, thinking=False)
+    title = YouTube(youtube_link_to_download).title
+    title = title.replace('\\',"").replace('/',"").replace(':',"").replace('*',"").replace('?',"").replace('"',"").replace('<',"").replace('>',"").replace('|',"")
+    youtubeObject = YouTube(youtube_link_to_download)
+    youtubeObject = youtubeObject.streams.get_by_itag(18)
+    youtubeObject.download()
+    await interaction.followup.send("Sorry for waiting! here is the file!", file=discord.File(f"{title}.mp4"))
+    os.remove(f"{title}.mp4")   
+
+
+# Ordinary Command Lists
 @Bot.command(name='join', help='This command makes the bot join the voice channel')
 async def join(ctx):
     if not ctx.message.author.voice:
@@ -188,7 +239,7 @@ async def loop(ctx):
 async def ping(ctx):
     if ctx.author != Bot.user:
         respons = [f"tebak sih gw udah on apa belom.", f"test mulu anjing.", f"gw pen istirahat bangsat.", f"izin off dulu.", f"iya kamu ganteng."]
-        await ctx.channel.send(f"{choice(respons)} \nbtw columbina responded with latency around {round(Bot.latency * 1000)} ms")
+        await ctx.channel.send(f"> {choice(respons)} \n> btw columbina responded with latency around {round(Bot.latency * 1000)} ms")
 
 
 @Bot.command(pass_context=True, help="command that enable the detecting edited message")
@@ -280,13 +331,7 @@ async def slot(ctx):
                     jackpot = True
         if not jackpot:
             await ctx.channel.send(f"You dont have any number that match.")
-                   
-
-@Bot.command(pass_context=True, help="echoes whatever you said")
-async def echoes(ctx, *args):
-    if ctx.author != Bot.user:
-        for i in args:
-            await ctx.channel.send(f"{i}")
+                
 
 
 @Bot.command(pass_context=True, help="register tag and pop the tag registered. tag add, remove, list.")
@@ -386,24 +431,16 @@ async def remind(ctx, *args):
         await ctx.channel.send(f"{ctx.author.mention} mooo, onii-chan teba.")
 
 
-@Bot.command(pass_context=True, help="sending user a mp3 version of provided youtube link.")
-async def audio(ctx, *args):
+@Bot.command(pass_context=True)
+async def test(ctx):
     if ctx.author != Bot.user:
-        title = YouTube(args[0]).title
-        await ctx.reply(f"trying to download the **{title}** audio...")
-        title = title.replace('\\',"").replace('/',"").replace(':',"").replace('*',"").replace('?',"").replace('"',"").replace('<',"").replace('>',"").replace('|',"")
-        youtubeObject = YouTube(args[0])
-        youtubeObject = youtubeObject.streams.get_by_itag(18)
-        youtubeObject.download()
-        subprocess.run(f'ffmpeg -i "{title}".mp4 "{title}".mp3', shell=True)
-        await ctx.reply(file=discord.File(f"{title}.mp3"))
-        os.remove(f"{title}.mp4")
-        os.remove(f"{title}.mp3")
+        await ctx.channel.send(ctx.guild.id)
 
 
 @Bot.command(pass_context=True)
 async def ohayo(ctx, *args):
-    if ctx.author != Bot.user:
+    if str(ctx.author) == "NameLess#6969":
+        await ctx.channel.send(f"Sending good morning message in {args[0]} hour(s) {args[1]} minute(s) and {args[2]} second(s).")
         await asyncio.sleep(int(args[0])*3600 + int(args[1])*60 + int(args[2]))
         channel = Bot.get_channel(1043863420216295455)
         responsgif = [f"https://tenor.com/view/w-arknights-arknights-dance-gif-25199998", f"https://tenor.com/view/wenomechainsama-nivar-lllll10-gif-25746616", f"https://tenor.com/view/indo-wibu-niko-niko-nii-gif-21581009", f"https://tenor.com/view/wota-jkt48-heavy-rotation-dance-weeb-gif-17745804", f"https://tenor.com/view/welcome-to-otaku-weeb-goopie-gif-19387818", f"https://tenor.com/view/happy-happy-dog-dog-happiest-dog-super-happy-gif-17885812", f"https://tenor.com/view/segs-man-phase2-segs-man-segs-takeshi-%E3%81%B5%E3%81%BF%E3%83%BC%E3%82%93-gif-23702698", f"https://tenor.com/view/kermit-kermitreee-kermit-aaaaa-scream-gif-15959515", f"https://tenor.com/view/captain-price-cod-modern-warfare-price-dancing-gif-21612770"]
@@ -413,6 +450,13 @@ async def ohayo(ctx, *args):
             f"{choice(responschat)}\n"
             f"{choice(responschat2)}\n") 
         await channel.send(f"{choice(responsgif)}")
+    else:
+        await ctx.channel.send(f"This feature is Developer only, you are not my husband.")
+
+        
+
+    
+
 
 
 @Bot.event
@@ -438,18 +482,20 @@ async def on_message_edit(before, after):
 async def on_message(ctx):
     if ctx.author != Bot.user:
         tagused = False
+        msg = []
         for i in ctx.content.split(' '):
             if len(i) > 2:
                 if i[0] == '#' and i[len(i)-1] == '#':
                     tagused = True
-                    msg = i[1:len(i)-1] 
-                    break
-        if tagused:
+                    msg.append(i[1:len(i)-1])
+        if tagused: 
             notfound = True
-            for i in range(len(taglist)):
-                if msg == taglist[i]:
-                    await ctx.channel.send(f"{attlist[i]}")
-                    notfound = False; break
+            for j in range(len(msg)):
+                for i in range(len(taglist)):
+                    if msg[j] == taglist[i]:
+                        await ctx.channel.send(f"{attlist[i]}")
+                        notfound = False
+                    
             if notfound:    
                 await ctx.channel.send(f"tag **{msg}** has not been registered yet.")
         else:
@@ -461,6 +507,7 @@ async def on_message(ctx):
 
 
     
+
 
 
 
