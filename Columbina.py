@@ -21,7 +21,7 @@ from pytube import YouTube
 preflist = pickle.load(open("preflist.dat", "rb"))
 
 # prep
-token = "token"
+token = ""
 intents = discord.Intents.all()
 Bot = commands.Bot(command_prefix=preflist, intents=intents)
 
@@ -99,10 +99,19 @@ async def test(interaction: discord.Interaction):
     await interaction.response.send_message(f"> Hey! {interaction.user.mention} \n> btw Columbina responded with latency around {round(Bot.latency * 1000)} ms")
 
 
+@Bot.tree.command(name="ping", description="ping the user with random message and latency")
+async def ping(interaction: discord.Interaction):
+    respons = [f"tebak sih gw udah on apa belom.", f"test mulu anjing.", f"gw pen istirahat bangsat.", f"izin off dulu.", f"iya kamu ganteng."]
+    await interaction.response.send_message(f"> {choice(respons)} \n> btw columbina responded with latency around {round(Bot.latency * 1000)} ms")
+
+
 @Bot.tree.command(name="say", description="I will say anything you want me to say!")
-@app_commands.describe(thing_to_say = "Sentence that i will say")
-async def say(interaction: discord.Interaction, thing_to_say: str):
-    await interaction.response.send_message(f"{thing_to_say}")
+@app_commands.describe(thing_to_say = "Sentence that i will say", att_to_say = "Attachment to be send")
+async def say(interaction: discord.Interaction, thing_to_say: str, att_to_say: discord.Attachment = None):
+    await interaction.response.send_message(f"your fess has been send!", ephemeral=True)
+    await interaction.channel.send(f"\"{thing_to_say}\"")
+    if att_to_say is not None:
+        await interaction.channel.send(f"{att_to_say}")
 
 
 @Bot.tree.command(name="audio", description="Downloading audio from the given youtube link!")
@@ -123,7 +132,7 @@ async def audio(interaction: discord.Interaction, youtube_link_to_download: str)
 @Bot.tree.command(name="video", description="Downloading video from the given youtube link!")
 @app_commands.describe(youtube_link_to_download = "Youtube video link that i will download")
 async def video(interaction: discord.Interaction, youtube_link_to_download: str):
-    await interaction.response.defer(ephemeral=True, thinking=False)
+    await interaction.response.defer(thinking=False)
     title = YouTube(youtube_link_to_download).title
     title = title.replace('\\',"").replace('/',"").replace(':',"").replace('*',"").replace('?',"").replace('"',"").replace('<',"").replace('>',"").replace('|',"")
     youtubeObject = YouTube(youtube_link_to_download)
@@ -132,6 +141,56 @@ async def video(interaction: discord.Interaction, youtube_link_to_download: str)
     await interaction.followup.send("Sorry for waiting! here is the file!", file=discord.File(f"{title}.mp4"))
     os.remove(f"{title}.mp4")   
 
+
+@Bot.tree.command(name="tag", description="Adding tag, removing tag, or see the tag lists.")
+@app_commands.describe(add_remove_list = "argument that you want to proceed", tag="tag that you want to remove or add", stringtag="tag that you want to add", attachtag="attachment tag that you want to add")
+async def tag(interaction: discord.Interaction, add_remove_list: str, tag: str = None, stringtag: str = None, attachtag: discord.Attachment = None):   
+    if add_remove_list == 'add' and (tag is not None) and (stringtag is not None or attachtag is not None):
+        sama = False
+        for i in taglist:
+            if tag == i:
+                sama = True
+        if sama == False:
+            successfull = False
+            if attachtag is not None:
+                attlist.append(attachtag.url)
+                pickle.dump(attlist, open("attlist.dat", "wb"))
+                await interaction.response.send_message(f"tag **{tag}** successfully registered")
+                successfull = True
+            else:
+                attlist.append(stringtag)
+                pickle.dump(attlist, open("attlist.dat", "wb"))
+                await interaction.response.send_message(f"tag **{tag}** successfully registered")
+                successfull = True
+            if successfull:
+                taglist.append(tag)
+                pickle.dump(taglist, open("taglist.dat", "wb"))
+        else:
+            await interaction.response.send_message(f"tag **{tag}** has been registered before")
+    elif add_remove_list == 'remove' and (tag is not None):
+        rem = True
+        for i in range(len(taglist)):
+            if tag == taglist[i]:
+                taglist.remove(taglist[i])
+                pickle.dump(taglist, open("taglist.dat", "wb"))
+                attlist.remove(attlist[i])
+                pickle.dump(attlist, open("attlist.dat", "wb"))
+                await interaction.response.send_message(f"tag **{tag}** successfully removed.")
+                rem = False
+                break
+        if rem:
+            await interaction.response.send_message(f"tag **{tag}** not found.")
+    elif add_remove_list == "list":
+        msg = ""
+        for i in taglist:
+            msg += i; msg += ", "
+        await interaction.response.send_message(
+            f"list has been registered: "
+            f"```{msg}```"
+        )
+    else:
+        await interaction.response.send_message(f"Command argument is not valid!")
+    
 
 # Ordinary Command Lists
 @Bot.command(name='join', help='This command makes the bot join the voice channel')
@@ -235,13 +294,6 @@ async def loop(ctx):
         await ctx.channel.send(f"loop status is now enabled.")
 
 
-@Bot.command(pass_context=True, help="command that test the bot is on or not")
-async def ping(ctx):
-    if ctx.author != Bot.user:
-        respons = [f"tebak sih gw udah on apa belom.", f"test mulu anjing.", f"gw pen istirahat bangsat.", f"izin off dulu.", f"iya kamu ganteng."]
-        await ctx.channel.send(f"> {choice(respons)} \n> btw columbina responded with latency around {round(Bot.latency * 1000)} ms")
-
-
 @Bot.command(pass_context=True, help="command that enable the detecting edited message")
 async def enable_feature(ctx):
     if ctx.author != Bot.user:
@@ -331,70 +383,6 @@ async def slot(ctx):
                     jackpot = True
         if not jackpot:
             await ctx.channel.send(f"You dont have any number that match.")
-                
-
-
-@Bot.command(pass_context=True, help="register tag and pop the tag registered. tag add, remove, list.")
-async def tag(ctx, *args):
-    if ctx.author != Bot.user:
-        if args[0] == "add":
-            sama = False
-            for i in taglist:
-                if args[1] == i:
-                    sama = True
-            if sama == False:
-                successfull = False
-                try:
-                    attlist.append(ctx.message.attachments[0].url)
-                    pickle.dump(attlist, open("attlist.dat", "wb"))
-                    await ctx.channel.send(f"tag **{args[1]}** successfully registered.")
-                    successfull = True
-                except:
-                    if len(args) <= 2:
-                        await ctx.channel.send(f"argument not found.")
-                    else:
-                        msg = ""
-                        for i in range(2, len(args)):
-                            msg += args[i]; msg += " "
-                        attlist.append(msg)
-                        pickle.dump(attlist, open("attlist.dat", "wb"))
-                        await ctx.channel.send(f"tag **{args[1]}** successfully registered.")  
-                        successfull = True
-                if successfull:
-                    taglist.append(args[1])
-                    pickle.dump(taglist, open("taglist.dat", "wb"))
-            else: 
-                await ctx.channel.send(f"tag **{args[1]}** has been registered before.")
-        elif args[0] == "list":
-            msg = ""
-            for i in taglist:
-                msg += i; msg += ", "
-            await ctx.channel.send(
-                f"list has been registered: "
-                f"```{msg}```"
-            )
-        elif args[0] == "remove":
-            rem = True
-            for i in range(len(taglist)):
-                if args[1] == taglist[i]:
-                    taglist.remove(taglist[i])
-                    pickle.dump(taglist, open("taglist.dat", "wb"))
-                    attlist.remove(attlist[i])
-                    pickle.dump(attlist, open("attlist.dat", "wb"))
-                    await ctx.channel.send(f"tag **{args[1]}** successfully removed.")
-                    rem = False
-                    break
-            if rem:
-                await ctx.channel.send(f"tag **{args[1]}** not found.")
-        else:
-            notfound = True
-            for i in range(len(taglist)):
-                if args[0] == taglist[i]:
-                    await ctx.channel.send(f"{attlist[i]}")
-                    notfound = False
-                    break
-            if notfound:
-                await ctx.channel.send(f"tag **{args[0]}** has not been registered yet.")
 
 
 @Bot.command(pass_context=True, help="manage prefixes. prefixes add, list, remove.")
