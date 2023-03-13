@@ -8,11 +8,13 @@ import random as rd
 import math
 import datetime
 import aiohttp
+import openai
 from discord.ext import commands, tasks
 from discord.voice_client import VoiceClient
 from kitsune import Kitsune, Popularity, Tag, Artist, Character, Parody, Group 
 from discord.utils import get
 from discord import app_commands
+from discord_webhook import DiscordWebhook, DiscordEmbed
 from random import choice
 from pytube import YouTube
 
@@ -21,7 +23,8 @@ from pytube import YouTube
 preflist = pickle.load(open("preflist.dat", "rb"))
 
 # prep
-token = ""
+token = " "
+apikeys = " "
 intents = discord.Intents.all()
 Bot = commands.Bot(command_prefix=preflist, intents=intents)
 
@@ -108,10 +111,15 @@ async def ping(interaction: discord.Interaction):
 @Bot.tree.command(name="say", description="I will say anything you want me to say!")
 @app_commands.describe(thing_to_say = "Sentence that i will say", att_to_say = "Attachment to be send")
 async def say(interaction: discord.Interaction, thing_to_say: str, att_to_say: discord.Attachment = None):
-    await interaction.response.send_message(f"your fess has been send!", ephemeral=True)
-    await interaction.channel.send(f"\"{thing_to_say}\"")
+    embed = discord.Embed(
+        colour=discord.Colour.random(),
+        description=thing_to_say,
+        title="Columbina submitted fess!")
     if att_to_say is not None:
-        await interaction.channel.send(f"{att_to_say}")
+        embed.set_image(url=att_to_say.url) 
+    embed.set_footer(text=f"Today at {datetime.datetime.now().hour}:{datetime.datetime.now().minute}")
+    await interaction.channel.send(embed=embed)
+    await interaction.response.send_message(f"your fess has been send!", ephemeral=True)
 
 
 @Bot.tree.command(name="audio", description="Downloading audio from the given youtube link!")
@@ -119,7 +127,7 @@ async def say(interaction: discord.Interaction, thing_to_say: str, att_to_say: d
 async def audio(interaction: discord.Interaction, youtube_link_to_download: str):
     await interaction.response.defer(thinking=False)
     title = YouTube(youtube_link_to_download).title
-    title = title.replace('\\',"").replace('/',"").replace(':',"").replace('*',"").replace('?',"").replace('"',"").replace('<',"").replace('>',"").replace('|',"")
+    title = title.replace('\\',"").replace('/',"").replace(':',"").replace('*',"").replace('?',"").replace('"',"").replace('<',"").replace('>',"").replace('|',"").replace(".","")
     youtubeObject = YouTube(youtube_link_to_download)
     youtubeObject = youtubeObject.streams.get_by_itag(18)
     youtubeObject.download()
@@ -142,7 +150,7 @@ async def video(interaction: discord.Interaction, youtube_link_to_download: str)
     os.remove(f"{title}.mp4")   
 
 
-@Bot.tree.command(name="tag", description="Adding tag, removing tag, or see the tag lists.")
+@Bot.tree.command(name="tag", description="Adding tag, removing tag, or see the tag lists.") 
 @app_commands.describe(add_remove_list = "argument that you want to proceed", tag="tag that you want to remove or add", stringtag="tag that you want to add", attachtag="attachment tag that you want to add")
 async def tag(interaction: discord.Interaction, add_remove_list: str, tag: str = None, stringtag: str = None, attachtag: discord.Attachment = None):   
     if add_remove_list == 'add' and (tag is not None) and (stringtag is not None or attachtag is not None):
@@ -178,7 +186,7 @@ async def tag(interaction: discord.Interaction, add_remove_list: str, tag: str =
                 await interaction.response.send_message(f"tag **{tag}** successfully removed.")
                 rem = False
                 break
-        if rem:
+        if rem: 
             await interaction.response.send_message(f"tag **{tag}** not found.")
     elif add_remove_list == "list":
         msg = ""
@@ -190,14 +198,68 @@ async def tag(interaction: discord.Interaction, add_remove_list: str, tag: str =
         )
     else:
         await interaction.response.send_message(f"Command argument is not valid!")
-    
+
+
+@Bot.tree.command(name="devannounce", description="making discord webhook announcement")
+@app_commands.describe(announce="announcement to be announce")
+async def announce(interaction: discord.Interaction, announce: str):
+    webhook = DiscordWebhook("https://discord.com/api/webhooks/1083343707085996052/K2z84xI0f_UGLIAU5NYSizUjQgqM1A-xV_pwOp4ciuIwl435v9GpyWcT8wA7RcQrDvQZ", username="Columbina Announcment", content="Tes")
+    embed = discord.Embed(
+        colour=discord.Colour.dark_green()
+        )
+    embed.set_author(name=interaction.guild.name)
+    embed.add_embed_field(name="Description", value="tes")
+    webhook.add_embed(embed)
+    await interaction.response.send_message(embed)
+
+
+@Bot.tree.command(name="chatgpt", description="Chat GPT based command!")
+@app_commands.describe(question="Ask me anything!")
+async def chatgpt(interaction: discord.Interaction, question: str):
+    await interaction.response.defer(thinking=False)
+    async with aiohttp.ClientSession() as session:
+        payload = {
+            "model": "text-davinci-003",
+            "prompt": question,
+            "temperature": 0.5,
+            "max_tokens": 1000, 
+            "presence_penalty": 0,
+            "frequency_penalty": 0,
+            "best_of": 1,
+        }
+        headers = {"Authorization": f"Bearer {apikeys}"}
+        async with session.post("https://api.openai.com/v1/completions", json=payload, headers=headers) as resp:
+            response = await resp.json()
+            try:
+                urls = interaction.user.guild_avatar.url
+            except:
+                urls = interaction.user.avatar.url
+            embed = discord.Embed(colour=discord.Colour.random(),title="AI Generated Responses", description=response["choices"][0]["text"]).set_footer(text=f"Today at {datetime.datetime.now().hour}:{datetime.datetime.now().minute}", icon_url=urls)
+            await interaction.followup.send(embed=embed)    
+
+
+@Bot.tree.command(name="avatar", description="Get avatar of the user who selected")
+@app_commands.describe(user="Tag the user who want to get the avatar!")
+async def avatar(interaction: discord.Interaction, user: discord.User):
+    try:
+        embed = discord.Embed(title=f"{user}'s avatar!", colour=discord.Colour.random())
+        try:    
+            urls = user.guild_avatar.url
+        except:
+            urls = user.avatar.url
+        embed.set_image(url=urls)
+        embed.set_footer(text=f"Today at {datetime.datetime.now().hour}:{datetime.datetime.now().minute}")
+        await interaction.response.send_message(embed=embed)    
+    except:
+        await interaction.response.send_message(f"please give the proper mention!", ephemeral=True)
+
 
 # Ordinary Command Lists
 @Bot.command(name='join', help='This command makes the bot join the voice channel')
 async def join(ctx):
     if not ctx.message.author.voice:
         await ctx.send("not in a voice channel arent you.")
-        return
+        return  
     else:
         channel = ctx.message.author.voice.channel
     await channel.connect()
