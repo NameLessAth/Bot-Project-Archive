@@ -203,7 +203,7 @@ async def tag(interaction: discord.Interaction, add_remove_list: str, tag: str =
 @Bot.tree.command(name="devannounce", description="making discord webhook announcement")
 @app_commands.describe(announce="announcement to be announce")
 async def announce(interaction: discord.Interaction, announce: str):
-    webhook = DiscordWebhook("https://discord.com/api/webhooks/1083343707085996052/K2z84xI0f_UGLIAU5NYSizUjQgqM1A-xV_pwOp4ciuIwl435v9GpyWcT8wA7RcQrDvQZ", username="Columbina Announcment", content="Tes")
+    webhook = DiscordWebhook(" ", username="Columbina Announcment", content="Tes")
     embed = discord.Embed(
         colour=discord.Colour.dark_green()
         )
