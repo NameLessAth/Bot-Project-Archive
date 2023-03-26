@@ -3,7 +3,6 @@ import pickle
 import subprocess
 import os
 import asyncio
-import youtube_dl
 import random as rd 
 import math
 import datetime
@@ -11,7 +10,6 @@ import aiohttp
 import openai
 from discord.ext import commands, tasks
 from discord.voice_client import VoiceClient
-from kitsune import Kitsune, Popularity, Tag, Artist, Character, Parody, Group 
 from discord.utils import get
 from discord import app_commands
 from discord_webhook import DiscordWebhook, DiscordEmbed
@@ -19,96 +17,44 @@ from random import choice
 from pytube import YouTube
 
 
-
 preflist = pickle.load(open("preflist.dat", "rb"))
 
 # prep
-token = " "
-apikeys = " "
+token = ""
+apikeys = ""
 intents = discord.Intents.all()
-Bot = commands.Bot(command_prefix=preflist, intents=intents)
-
-
-
-#ffmpeg prep
-youtube_dl.utils.bug_reports_message = lambda: ''
-
-ytdl_format_options = {
-    'format': 'bestaudio/best',
-    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
-    'restrictfilenames': True,
-    'noplaylist': True,
-    'nocheckcertificate': True,
-    'ignoreerrors': False,
-    'logtostderr': False,
-    'quiet': True,
-    'no_warnings': True,
-    'default_search': 'auto',
-    'source_address': '0.0.0.0' 
-}
-
-ffmpeg_options = {
-    'options': '-vn'
-}
-
-ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
-
-class YTDLSource(discord.PCMVolumeTransformer):
-    def __init__(self, source, *, data, volume=0.05):
-        super().__init__(source, volume)
-
-        self.data = data
-
-        self.title = data.get('title')
-        self.url = data.get('url')
-
-    @classmethod
-    async def from_url(cls, url, *, loop=None, stream=False):
-        loop = loop or asyncio.get_event_loop()
-        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
-
-        if 'entries' in data:
-            data = data['entries'][0]
-
-        filename = data['url'] if stream else ytdl.prepare_filename(data)
-        return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
-
+bot = commands.Bot(command_prefix=preflist, intents=intents)
 
 # declare variable
-songlist = []
 detect = False
-loop = False
-queue = []
 taglist = pickle.load(open("taglist.dat", "rb"))
 attlist = pickle.load(open("attlist.dat", "rb"))
 
 
 # BOT event and commands
-
-
-@Bot.event
+@bot.event
 async def on_ready():   
-    print(f"I, {Bot.user}, is ready to serve master")
+    print(f"I, {bot.user}, is ready to serve master")
     try:
-        synced = await Bot.tree.sync()
+        synced = await bot.tree.sync()
         print(f"synced {len(synced)} slash command!")
     except Exception as e:
         print(e)
 
     
 # Tree Command Lists
-@Bot.tree.command(name="hello", description="greeting the user with latency ")
+@bot.tree.command(name="hello", description="greeting the user with latency ")
 async def test(interaction: discord.Interaction):
-    await interaction.response.send_message(f"> Hey! {interaction.user.mention} \n> btw Columbina responded with latency around {round(Bot.latency * 1000)} ms")
+    await interaction.response.send_message(f"> Hey! {interaction.user.mention} \n> btw Columbina responded with latency around {round(bot.latency * 1000)} ms")
 
 
-@Bot.tree.command(name="ping", description="ping the user with random message and latency")
+@bot.tree.command(name="ping", description="ping the user with random message and latency")
 async def ping(interaction: discord.Interaction):
     respons = [f"tebak sih gw udah on apa belom.", f"test mulu anjing.", f"gw pen istirahat bangsat.", f"izin off dulu.", f"iya kamu ganteng."]
-    await interaction.response.send_message(f"> {choice(respons)} \n> btw columbina responded with latency around {round(Bot.latency * 1000)} ms")
+    await interaction.response.send_message(f"> {choice(respons)} \n> btw columbina responded with latency around {round(bot.latency * 1000)} ms")
 
 
-@Bot.tree.command(name="say", description="I will say anything you want me to say!")
+@bot.tree.command(name="say", description="I will say anything you want me to say!")
 @app_commands.describe(thing_to_say = "Sentence that i will say", att_to_say = "Attachment to be send")
 async def say(interaction: discord.Interaction, thing_to_say: str, att_to_say: discord.Attachment = None):
     embed = discord.Embed(
@@ -117,12 +63,12 @@ async def say(interaction: discord.Interaction, thing_to_say: str, att_to_say: d
         title="Columbina submitted fess!")
     if att_to_say is not None:
         embed.set_image(url=att_to_say.url) 
-    embed.set_footer(text=f"Today at {datetime.datetime.now().hour}:{datetime.datetime.now().minute}")
+    embed.set_footer(text=f"Today at {datetime.datetime.now().hour:02}:{datetime.datetime.now().minute:02}")
     await interaction.channel.send(embed=embed)
     await interaction.response.send_message(f"your fess has been send!", ephemeral=True)
 
 
-@Bot.tree.command(name="audio", description="Downloading audio from the given youtube link!")
+@bot.tree.command(name="audio", description="Downloading audio from the given youtube link!")
 @app_commands.describe(youtube_link_to_download = "Youtube link that i will download the audio")
 async def audio(interaction: discord.Interaction, youtube_link_to_download: str):
     await interaction.response.defer(thinking=False)
@@ -137,7 +83,7 @@ async def audio(interaction: discord.Interaction, youtube_link_to_download: str)
     os.remove(f"{title}.mp3")
 
 
-@Bot.tree.command(name="video", description="Downloading video from the given youtube link!")
+@bot.tree.command(name="video", description="Downloading video from the given youtube link!")
 @app_commands.describe(youtube_link_to_download = "Youtube video link that i will download")
 async def video(interaction: discord.Interaction, youtube_link_to_download: str):
     await interaction.response.defer(thinking=False)
@@ -150,7 +96,7 @@ async def video(interaction: discord.Interaction, youtube_link_to_download: str)
     os.remove(f"{title}.mp4")   
 
 
-@Bot.tree.command(name="tag", description="Adding tag, removing tag, or see the tag lists.") 
+@bot.tree.command(name="tag", description="Adding tag, removing tag, or see the tag lists.") 
 @app_commands.describe(add_remove_list = "argument that you want to proceed", tag="tag that you want to remove or add", stringtag="tag that you want to add", attachtag="attachment tag that you want to add")
 async def tag(interaction: discord.Interaction, add_remove_list: str, tag: str = None, stringtag: str = None, attachtag: discord.Attachment = None):   
     if add_remove_list == 'add' and (tag is not None) and (stringtag is not None or attachtag is not None):
@@ -200,20 +146,7 @@ async def tag(interaction: discord.Interaction, add_remove_list: str, tag: str =
         await interaction.response.send_message(f"Command argument is not valid!")
 
 
-@Bot.tree.command(name="devannounce", description="making discord webhook announcement")
-@app_commands.describe(announce="announcement to be announce")
-async def announce(interaction: discord.Interaction, announce: str):
-    webhook = DiscordWebhook(" ", username="Columbina Announcment", content="Tes")
-    embed = discord.Embed(
-        colour=discord.Colour.dark_green()
-        )
-    embed.set_author(name=interaction.guild.name)
-    embed.add_embed_field(name="Description", value="tes")
-    webhook.add_embed(embed)
-    await interaction.response.send_message(embed)
-
-
-@Bot.tree.command(name="chatgpt", description="Chat GPT based command!")
+@bot.tree.command(name="chatgpt", description="Chat GPT based command!")
 @app_commands.describe(question="Ask me anything!")
 async def chatgpt(interaction: discord.Interaction, question: str):
     await interaction.response.defer(thinking=False)
@@ -234,11 +167,11 @@ async def chatgpt(interaction: discord.Interaction, question: str):
                 urls = interaction.user.guild_avatar.url
             except:
                 urls = interaction.user.avatar.url
-            embed = discord.Embed(colour=discord.Colour.random(),title="AI Generated Responses", description=response["choices"][0]["text"]).set_footer(text=f"Today at {datetime.datetime.now().hour}:{datetime.datetime.now().minute}", icon_url=urls)
+            embed = discord.Embed(colour=discord.Colour.random(),title="AI Generated Responses", description=response["choices"][0]["text"]).set_footer(text=f"Powered by ChatGPT model Text-Davinci-003\nToday at {datetime.datetime.now().hour:02}:{datetime.datetime.now().minute:02}", icon_url="https://cdn.discordapp.com/attachments/1044425725291286579/1085875144997740564/wDxGa5utiNgg0AAAAASUVORK5CYII.png")
             await interaction.followup.send(embed=embed)    
 
 
-@Bot.tree.command(name="avatar", description="Get avatar of the user who selected")
+@bot.tree.command(name="avatar", description="Get avatar of the user who selected") 
 @app_commands.describe(user="Tag the user who want to get the avatar!")
 async def avatar(interaction: discord.Interaction, user: discord.User):
     try:
@@ -247,134 +180,138 @@ async def avatar(interaction: discord.Interaction, user: discord.User):
             urls = user.guild_avatar.url
         except:
             urls = user.avatar.url
+        try:
+            urls_req = interaction.user.guild_avatar.url
+        except:
+            urls_req = interaction.user.avatar.url
         embed.set_image(url=urls)
-        embed.set_footer(text=f"Today at {datetime.datetime.now().hour}:{datetime.datetime.now().minute}")
+        embed.set_footer(icon_url=urls_req, text=f"Requested by {interaction.user} • Today at {datetime.datetime.now().hour:02}:{datetime.datetime.now().minute:02}")
         await interaction.response.send_message(embed=embed)    
     except:
         await interaction.response.send_message(f"please give the proper mention!", ephemeral=True)
 
 
+@bot.tree.command(name="jankenpon", description="Duel the tag people to play rock, paper, scissors")
+@app_commands.describe(user_to_duel="User to duel", score_to_win="Score to win the duel!")
+async def jankenpon(interaction: discord.Interaction, user_to_duel: discord.User, score_to_win: int):
+    if user_to_duel != interaction.user:
+        berhasil = False
+        await interaction.response.defer(thinking=True, ephemeral=True)
+        user1score = 0; user2score = 0
+        botmsg = await interaction.channel.send(f"{interaction.user.mention} challenged {user_to_duel.mention} to duel!")
+        await botmsg.add_reaction(u"\u2705"); await botmsg.add_reaction(u"\u274C")
+        try:
+            reaction, user = await bot.wait_for('reaction_add', check=lambda reaction, user: user == user_to_duel, timeout=15.00)
+        except:
+            await interaction.channel.send(f"{user_to_duel.mention} is not replying. Duel is cancelled")
+        else:
+            if reaction.emoji == u"\u2705":
+                await interaction.channel.send(f"GUIDE: use R/r as rock, P/p as paper, S/s as scissors, send the message after the \"==may the duel start!==\" appeared!")
+                while (user1score != score_to_win and user2score != score_to_win):
+                    msg = await interaction.channel.send("duel is gonna start in 5 seconds!")
+                    await asyncio.sleep(2)
+                    await msg.edit(content="3 seconds to the duel!") 
+                    await asyncio.sleep(2)
+                    await msg.edit(content="1 second remaining to the duel!")
+                    await asyncio.sleep(1)
+                    await msg.edit(content="==may the duel start!==") 
+                    try:    
+                        msg1= await bot.wait_for("message", check=lambda m: m.author == user_to_duel or m.author == interaction.user, timeout=1.7)
+                        if msg1.author == user_to_duel:
+                            msg2 = await bot.wait_for("message", check=lambda m: m.author == interaction.user, timeout=0.7)
+                        else:
+                            msg2 = await bot.wait_for("message", check=lambda m: m.author == user_to_duel, timeout=0.7)
+                    except:
+                        await interaction.channel.send(f"Duel is not valid! someone send his/her message too late!")
+                    else:
+                        if msg1.author == interaction.user:
+                            if (msg1.content.lower() == "r" and msg2.content.lower() == "s") or (msg1.content.lower() == "s" and msg2.content.lower() == "p") or (msg1.content.lower() == "p" and msg2.content.lower() == "r"):
+                                user1score += 1
+                                await interaction.channel.send(f"{msg1.author} has won the round! (pts: {user1score})")
+                            elif (msg1.content.lower() == "r" and msg2.content.lower() == "p") or (msg1.content.lower() == "s" and msg2.content.lower() == "r") or (msg1.content.lower() == "p" and msg2.content.lower() == "s"):
+                                user2score += 1
+                                await interaction.channel.send(f"{msg2.author} has won the round! (pts:{user2score})")
+                            elif msg1.content.lower() == msg2.content.lower():
+                                await interaction.channel.send(f"The round ended up draw")
+                            else:
+                                await interaction.channel.send(f"invalid input! use R/r or P/p or S/s only please!")
+                        elif msg2.author == interaction.user:
+                            if (msg1.content.lower() == "r" and msg2.content.lower() == "s") or (msg1.content.lower() == "s" and msg2.content.lower() == "p") or (msg1.content.lower() == "p" and msg2.content.lower() == "r"):
+                                user2score += 1                                
+                                await interaction.channel.send(f"{msg1.author} has won the round! (pts: {user2score})")
+                            elif (msg1.content.lower() == "r" and msg2.content.lower() == "p") or (msg1.content.lower() == "s" and msg2.content.lower() == "r") or (msg1.content.lower() == "p" and msg2.content.lower() == "s"):
+                                user1score += 1
+                                await interaction.channel.send(f"{msg2.author} has won the round! (pts: {user1score})")
+                            elif msg1.content.lower() == msg2.content.lower():
+                                await interaction.channel.send(f"The round ended up draw")
+                            else:
+                                await interaction.channel.send(f"invalid input! use R/r or P/p or S/s only please!")
+                if user1score == score_to_win:
+                    await interaction.channel.send(f"{interaction.user}, the challenger,  has won the game!!!!")
+                else:
+                    await interaction.channel.send(f"{user}, the competitor, has won the game!!!!")
+                berhasil = True
+            else:
+                await interaction.channel.send(f"{user_to_duel} is evading the duel! what a shame!")
+        if berhasil:
+            await interaction.followup.send(f"duel is successful")
+        else:
+            await interaction.followup.send(f"duel is cancelled")
+    else:
+        await interaction.response.send_message(f"you CANNOT duel yourself!!", ephemeral=True)
+
+
+@bot.tree.command(name="roulette", description="play the game russian roulette!, getting timed out for 60 seconds if you fail the game!")
+@app_commands.describe(bullet="how many bullet to put in the chamber. (1 <= bullet <= 6)")
+async def roulette(interaction: discord.Interaction, bullet: int):
+    if bullet >= 1 and bullet <= 6:
+        await interaction.response.defer(thinking=False, ephemeral=True)
+        await interaction.channel.send(f"wanna test your luck for today huh?")
+        msg = await interaction.channel.send(f"choose how many times you want to spin the bullet cylinder! \nreact after the reaction added")
+        await msg.add_reaction(u"\u0031\u20E3"); await msg.add_reaction(u"\u0032\u20E3"); await msg.add_reaction(u"\u0033\u20E3"); await msg.add_reaction(u"\u0034\u20E3"); await msg.add_reaction(u"\u0035\u20E3"); await msg.add_reaction(u"\u0036\u20E3")
+        await interaction.channel.send(f"you might now react!")
+        try:
+            reaction, user = await bot.wait_for('reaction_add', check=lambda reaction, user: user == interaction.user, timeout=5)
+        except:
+            await interaction.channel.send(f"{interaction.user} is not replying or the input is not valid. What a loser.")
+            await interaction.followup.send(f"russian roulette is cancelled.")
+        else:
+            kematian = [u"\u0031\u20E3", u"\u0032\u20E3", u"\u0033\u20E3", u"\u0034\u20E3", u"\u0035\u20E3", u"\u0036\u20E3"]
+            kematianarr = []
+            while len(kematianarr) != bullet:
+                selected = choice(kematian)
+                kematian.remove(selected)
+                kematianarr.append(selected)
+            if reaction.emoji in kematianarr:
+                await interaction.user.edit(timed_out_until=discord.utils.utcnow() + datetime.timedelta(seconds=60))
+                await interaction.channel.send(f"BOOM YOU GOT A BULLET LOL! TIMEOUT 60 SECS BITCH!")
+            else:
+                await interaction.channel.send(f"You made it!, no timeout for you!")
+            await interaction.followup.send(f"russian roulette is successful")
+    else:
+        await interaction.response.send_message(f"Please input the right amount of bullet to input!")
+
+
 # Ordinary Command Lists
-@Bot.command(name='join', help='This command makes the bot join the voice channel')
-async def join(ctx):
-    if not ctx.message.author.voice:
-        await ctx.send("not in a voice channel arent you.")
-        return  
-    else:
-        channel = ctx.message.author.voice.channel
-    await channel.connect()
-
-
-@Bot.command(pass_context=True)
-async def p(ctx, *args):
-    global voice_clients
-    global yt_dl_opts
-    global ffmpeg_options
-    global loop
-    global songlist
-    if ctx.author != Bot.user:
-        if (ctx.author.voice) :
-            try:
-                voice_client = await ctx.message.author.voice.channel.connect()
-                voice_clients[voice_client.guild.id] = voice_client
-            except:
-                if not ctx.author.voice:
-                    await ctx.send("not in a voice channel arent you.")
-                else: pass
-        url = args[0]
-        player = await YTDLSource.from_url(url, loop=Bot.loop)
-        songlist.append(player)
-        voice_clients[ctx.guild.id].play(player, after=lambda e: print('Player error: %s' % e) if e else None)
-   
-
-@Bot.command(name='play', help='This command plays music')
-async def play(ctx, *args):
-    global queue
-    if not ctx.message.author.voice:
-        await ctx.send("You are not connected to a voice channel")
-        return
-    else:
-        channel = ctx.message.author.voice.channel
-    try: await channel.connect()
-    except: pass
-    server = ctx.message.guild
-    voice_channel = server.voice_client
-    async with ctx.typing():
-        player = await YTDLSource.from_url(args[0], loop=Bot.loop)
-        songlist.append(player)
-        voice_channel.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
-        if loop:
-            queue.append(queue[0])
-        del(queue[0])
-    await ctx.send(f'**Now playing:** {player.title}')
-    
-
-@Bot.command(pass_context=True, help='This command pauses the song')
-async def pause(ctx):
-    server = ctx.message.guild
-    voice_channel = server.voice_client
-    voice_channel.pause()
-
-
-@Bot.command(name='resume', help='This command resumes the song!')
-async def resume(ctx):
-    server = ctx.message.guild
-    voice_channel = server.voice_client
-    voice_channel.resume()
-
-
-@Bot.command(name='add')
-async def add(ctx, *args):
-    global queue
-    queue.append(args)
-    await ctx.send(f'`{args}` added to queue!')
-
-
-@Bot.command(name='view', help='This command shows the queue')
-async def view(ctx):
-    await ctx.send(f'Your queue is now :')
-    respons = ""
-    for i in range(len(songlist)):
-        respons += f"{i+1}. {songlist[i].title} \n"
-    await ctx.channel.send(f"{respons}")
-
-
-@Bot.command(name='leave', help='This command stops the music and makes the bot leave the voice channel')
-async def leave(ctx):
-    voice_client = ctx.message.guild.voice_client
-    await voice_client.disconnect()
-
-
-@Bot.command(pass_context=True, help='loop current queue, use it to reverse the current loop status.')
-async def loop(ctx):
-    global loop
-    if loop:
-        loop = False
-        await ctx.channel.send(f"loop status is now disabled.")
-    else:
-        loop = True
-        await ctx.channel.send(f"loop status is now enabled.")
-
-
-@Bot.command(pass_context=True, help="command that enable the detecting edited message")
+@bot.command(pass_context=True, help="command that enable the detecting edited message")
 async def enable_feature(ctx):
-    if ctx.author != Bot.user:
+    if ctx.author != bot.user:
         global detect
         detect = True
         await ctx.channel.send(f"Detecting feature has been enabled.")    
 
 
-@Bot.command(pass_context=True, help="command that disable the detecting edited message")
+@bot.command(pass_context=True, help="command that disable the detecting edited message")
 async def disable_feature(ctx):
-    if ctx.author != Bot.user:
+    if ctx.author != bot.user:
         global detect
         detect = False
         await ctx.channel.send(f"Detecting feature has been disabled.")
 
 
-@Bot.command(pass_context=True, help="command that give you a reasonable answer to your argue \nand use '; apakah x valid' to make the bot gives a argument.")
+@bot.command(pass_context=True, help="command that give you a reasonable answer to your argue \nand use '; apakah x valid' to make the bot gives a argument.")
 async def apakah(ctx, *args):
-    if ctx.author != Bot.user:
+    if ctx.author != bot.user:
         valid = False
         if len(args) != 0:
             if args[len(args)-1] == 'valid':
@@ -387,25 +324,25 @@ async def apakah(ctx, *args):
             await ctx.channel.send(choice(respons))      
 
 
-@Bot.command(pass_context=True, help="command that give you a reasonable answer to your argue")
+@bot.command(pass_context=True, help="command that give you a reasonable answer to your argue")
 async def mengapa(ctx):
-    if ctx.author != Bot.user:
+    if ctx.author != bot.user:
         respons = [f"karena kamu anjing.", f"karena nameless suka loli.", f"tanyakan kepada rumput yang bergoyang.", f"kataku mending tanya ke Yang Maha Kuasa.", f"karena kamu gay.", f"karena saya cantik."]
         await ctx.channel.send(choice(respons))
 
 
-@Bot.command(pass_context=True, name="rate", help="command that judge and rate your argue")
+@bot.command(pass_context=True, name="rate", help="command that judge and rate your argue")
 async def rate(ctx): 
-    if ctx.author != Bot.user:
+    if ctx.author != bot.user:
         a = rd.randint(-10, 10)
         if a>=-10 and a < 0: respons = [f"momen/10", f"{math.pi}", f"420/69", f"9/11"]
         else: respons = [f"{a}/10", f"69/420"]
         await ctx.channel.send(choice(respons))
 
 
-@Bot.command(pass_context=True, help="command that test your gacha luck")
+@bot.command(pass_context=True, help="command that test your gacha luck")
 async def gacha(ctx):
-    if ctx.author != Bot.user:
+    if ctx.author != bot.user:
         a = rd.randint(1,1000)
         if a == 1:
             await ctx.channel.send(f"holy shit you won the UR (0.1%), better try your gacha quickly.")
@@ -419,9 +356,9 @@ async def gacha(ctx):
             await ctx.channel.send(f"you will get a common in your next gacha (around 50% chance).")     
 
 
-@Bot.command(pass_context=True, help="rolling a slot machine")
+@bot.command(pass_context=True, help="rolling a slot machine")
 async def slot(ctx):
-    if ctx.author != Bot.user:
+    if ctx.author != bot.user:
         await ctx.channel.send(f"rolling a slot machine for you...")
         a = [rd.randint(0,9), rd.randint(0,9), rd.randint(0,9), rd.randint(0,9), rd.randint(0,9), rd.randint(0,9), rd.randint(0,9), rd.randint(0,9), rd.randint(0,9)]
         message = await ctx.channel.send(f"{a[0]} {a[1]} {a[2]} \n{a[3]} {a[4]} {a[5]} \n{a[6]} {a[7]} {a[8]}")
@@ -447,9 +384,9 @@ async def slot(ctx):
             await ctx.channel.send(f"You dont have any number that match.")
 
 
-@Bot.command(pass_context=True, help="manage prefixes. prefixes add, list, remove.")
+@bot.command(pass_context=True, help="manage prefixes. prefixes add, list, remove.")
 async def prefixes(ctx, *args):
-    if ctx.author != Bot.user:
+    if ctx.author != bot.user:
         if args[0] == "add":
             preflist.append(args[1])
             pickle.dump(preflist, open("preflist.dat", "wb"))
@@ -471,9 +408,9 @@ async def prefixes(ctx, *args):
                 await ctx.channel.send(f"prefixes '{args[1]}' has not been registered yet.")
             
 
-@Bot.command(pass_context=True, help="remind user within x seconds")
+@bot.command(pass_context=True, help="remind user within x seconds")
 async def remind(ctx, *args):
-    if ctx.author != Bot.user:
+    if ctx.author != bot.user:
         await ctx.channel.send(f"i will mention you, {ctx.author.mention}, within {args[0]} hour(s) {args[1]} minute(s) {args[2]} second(s)")
         await asyncio.sleep(int(args[0])*3600 + int(args[1])*60 + int(args[2]))
         await ctx.channel.send(f"{ctx.author.mention} onii-chan bangun, katanya minta di ingetin.")
@@ -481,18 +418,18 @@ async def remind(ctx, *args):
         await ctx.channel.send(f"{ctx.author.mention} mooo, onii-chan teba.")
 
 
-@Bot.command(pass_context=True)
+@bot.command(pass_context=True)
 async def test(ctx):
-    if ctx.author != Bot.user:
+    if ctx.author != bot.user:
         await ctx.channel.send(ctx.guild.id)
 
 
-@Bot.command(pass_context=True)
+@bot.command(pass_context=True)
 async def ohayo(ctx, *args):
     if str(ctx.author) == "NameLess#6969":
         await ctx.channel.send(f"Sending good morning message in {args[0]} hour(s) {args[1]} minute(s) and {args[2]} second(s).")
         await asyncio.sleep(int(args[0])*3600 + int(args[1])*60 + int(args[2]))
-        channel = Bot.get_channel(1043863420216295455)
+        channel = bot.get_channel(1043863420216295455)
         responsgif = [f"https://tenor.com/view/w-arknights-arknights-dance-gif-25199998", f"https://tenor.com/view/wenomechainsama-nivar-lllll10-gif-25746616", f"https://tenor.com/view/indo-wibu-niko-niko-nii-gif-21581009", f"https://tenor.com/view/wota-jkt48-heavy-rotation-dance-weeb-gif-17745804", f"https://tenor.com/view/welcome-to-otaku-weeb-goopie-gif-19387818", f"https://tenor.com/view/happy-happy-dog-dog-happiest-dog-super-happy-gif-17885812", f"https://tenor.com/view/segs-man-phase2-segs-man-segs-takeshi-%E3%81%B5%E3%81%BF%E3%83%BC%E3%82%93-gif-23702698", f"https://tenor.com/view/kermit-kermitreee-kermit-aaaaa-scream-gif-15959515", f"https://tenor.com/view/captain-price-cod-modern-warfare-price-dancing-gif-21612770"]
         responschat = [f"Good morning yall, time to survive another day.", f"Ohayou sekai good morning world~!"]
         responschat2 = [f"Dont forget to have a breakfast!", f"Dont forget to take your daily dose of copium!"]
@@ -503,23 +440,19 @@ async def ohayo(ctx, *args):
     else:
         await ctx.channel.send(f"This feature is Developer only, you are not my husband.")
 
-        
 
-    
-
-
-
-@Bot.event
+# Bot Event lists
+@bot.event
 async def on_member_join(member):
     channel = discord.utils.get(member.guild.channels, name='「💬」general')
     await channel.send(f'Irashaimasee {member.mention}-san! gohan ni suru? ofuro ni suru? soredomo? wa-ta-shi?')
     await channel.send(f"https://cdn.discordapp.com/attachments/1043863420216295455/1064740380408565760/WelcomingPNG.jpg")
 
 
-@Bot.event
+@bot.event
 async def on_message_edit(before, after):
     if detect:
-        if before.author != Bot.user:
+        if before.author != bot.user:
             if before.content != after.content: 
                 await before.channel.send(
                     f"{before.author.mention} kedetect ngedit bang.\n"
@@ -528,9 +461,9 @@ async def on_message_edit(before, after):
                 )
 
 
-@Bot.event
+@bot.event
 async def on_message(ctx):
-    if ctx.author != Bot.user:
+    if ctx.author != bot.user:
         tagused = False
         msg = []
         for i in ctx.content.split(' '):
@@ -551,14 +484,9 @@ async def on_message(ctx):
         else:
             if "tiga" in ctx.content.lower():
                 await ctx.reply("wait, **TIGA???**")
-            elif "beliau" in ctx.content.lower():
-                await ctx.reply(choice([f"https://cdn.discordapp.com/attachments/1063877319724372052/1069245845838516234/0.png", f"https://cdn.discordapp.com/attachments/1063877319724372052/1069245845838516234/0.png", f"https://cdn.discordapp.com/attachments/1063877319724372052/1069245957096616037/FahuWR8UEAE1_sU.png", f"https://cdn.discordapp.com/attachments/1063877319724372052/1069246054513528882/7e02b4790efc8b12a176a216b1e5fa93.png", f"https://cdn.discordapp.com/attachments/1063877319724372052/1069246155604631552/2Q.png", f"https://cdn.discordapp.com/attachments/1063877319724372052/1069246220268216422/FaHppUjacAIWm5-.png"]))
-            await Bot.process_commands(ctx)
-
-
-    
+            await bot.process_commands(ctx)
 
 
 
-
-Bot.run(token)  
+# ==RUN CODE==
+bot.run(token)  
